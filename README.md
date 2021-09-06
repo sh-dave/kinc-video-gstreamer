@@ -2,6 +2,10 @@
 
 Kha/Kinc video implementation for linux native. Currently only supports OpenGL and `I420` / `NV12` encoded videos, but it's easily extensible by providing more shaders.
 
+## attention
+
+Requires all video.h/c.h code in kinc to be wrapped with an `#if !defined(KINC_VIDEO_GSTREAMER) ... #endif` until i put up a PR for that.
+
 ## system installation
 
 ```
@@ -23,7 +27,7 @@ await project.addProject('kinc-video-gstreamer');
 
 The provided `kincfile.js` might need different include paths, check your distribution for that.
 
-####
+#### example code
 
 ```
 var update_task = -1;
