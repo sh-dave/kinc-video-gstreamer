@@ -63,6 +63,7 @@ typedef struct {
 
 	bool finished;
 	bool paused;
+	bool looping;
 } kinc_video_impl_t;
 
 typedef struct kinc_internal_video_sound_stream {

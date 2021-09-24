@@ -56,6 +56,7 @@ void kinc_video_init(kinc_video_t *video, const char *filename) {
 	ctx->buf = NULL;
 	ctx->finished = false;
 	ctx->paused = true;
+	ctx->looping = false;
 
 	// ctx->audiosink = gst_element_factory_make("alsasink", "audiosink");
 	// ctx->audioconvert = gst_element_factory_make("audioconvert", "audioconvert");
@@ -121,9 +122,10 @@ static bool change_state( kinc_video_t *video, GstState state ) {
 	return true;
 }
 
-void kinc_video_play(kinc_video_t *video) {
+void kinc_video_play(kinc_video_t *video, bool loop) {
 	if (change_state(video, GST_STATE_PLAYING)) {
 		video->impl.paused = false;
+		video->impl.looping = loop;
 	}
 }
 
@@ -151,12 +153,18 @@ kinc_g4_texture_t *kinc_video_current_image(kinc_video_t *video) {
 	return &video->impl.texture;
 }
 
+#define NANOSECONDS_TO_SECONDS 1000000000
+
 double kinc_video_duration(kinc_video_t *video) {
-	return 0.0;
+	gint64 nanoseconds = 0;
+	gst_element_query_duration(video->impl.pipeline, GST_FORMAT_TIME, &nanoseconds);
+	return nanoseconds / NANOSECONDS_TO_SECONDS;
 }
 
 double kinc_video_position(kinc_video_t *video) {
-	return 0.0;
+	gint64 nanoseconds = 0;
+	gst_element_query_position(video->impl.pipeline, GST_FORMAT_TIME, &nanoseconds);
+	return nanoseconds / NANOSECONDS_TO_SECONDS;
 }
 
 bool kinc_video_finished(kinc_video_t *video) {
@@ -317,7 +325,11 @@ message_handler( GstBus *bus, GstMessage *msg, kinc_video_impl_t *ctx ) {
 
 	switch (GST_MESSAGE_TYPE(msg)) {
 		case GST_MESSAGE_EOS:
-			ctx->finished = true;
+			if (ctx->looping) {
+				gst_element_seek_simple(ctx->pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 0);
+			} else {
+				ctx->finished = true;
+			}
 			// kinc_video_stop(ctx); // TODO (DK)
 			kinc_log(KINC_LOG_LEVEL_INFO, "video fininshed: GST_MESSAGE_EOS");
 			break;
