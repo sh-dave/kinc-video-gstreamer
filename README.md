@@ -1,12 +1,12 @@
 # kinc-video-gstreamer
 
-Kha/Kinc video implementation for linux native. Currently only supports OpenGL and `I420` / `NV12` encoded videos, but it's easily extensible by providing more shaders.
+Kha/Kinc video implementation using gstreamer (only linux native for now). Currently only supports OpenGL and `I420` / `NV12` encoded videos, but it's easily extensible by providing more shaders.
 
 ## attention
 
 Requires all video.h/c.h code in kinc to be wrapped with an `#if !defined(KINC_VIDEO_GSTREAMER) ... #endif` until i put up a PR for that.
 
-## system installation
+## dependency installation
 
 ```
 apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
@@ -18,6 +18,8 @@ apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-pl
 
 #### your khafile.js
 
+TODO - i have to figure out why both are needed, addProject() should be enough.
+
 ```
 project.addLibrary('kinc-video-gstreamer');
 await project.addProject('kinc-video-gstreamer');
@@ -27,9 +29,9 @@ await project.addProject('kinc-video-gstreamer');
 
 The provided `kincfile.js` might need different include paths, check your distribution for that.
 
-#### example code
+#### Kha example code
 
-```
+```haxe
 var update_task = -1;
 var video = null;
 
@@ -43,7 +45,7 @@ kha.Assets.loadVideoFromPath(url,
 
 
 function update_video() {
-	// call video.update() periodically for message handling
+	// call video.update() periodically to handle internal messages
 	video.update(1 / 60);
 
 	if (video.isFinished()) {
