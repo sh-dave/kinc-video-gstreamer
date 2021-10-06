@@ -7,10 +7,12 @@ extern "C" {
 #if defined(KINC_VIDEO_GSTREAMER)
 
 #include <kinc/graphics4/texture.h>
+#include <gst/gstelement.h>
 
-typedef struct _GstElement GstElement;
-typedef struct _GstBus GstBus;
-typedef struct _GstBuffer GstBuffer;
+// typedef struct _GstElement GstElement;
+// typedef struct _GstBus GstBus;
+// typedef struct _GstBuffer GstBuffer;
+// typedef enum GstState;
 
 #define VIDEO_COLOR_FORMAT_FOUR_CC(a,b,c,d) \
 		((unsigned long) ((a) | (b)<<8 | (c)<<16 | (d)<<24))
@@ -61,8 +63,9 @@ typedef struct {
 	GstBuffer *buf;
 	kinc_g4_texture_t texture;
 
+	GstState state;
 	bool finished;
-	bool paused;
+	// bool paused;
 	bool looping;
 } kinc_video_impl_t;
 

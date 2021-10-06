@@ -55,7 +55,8 @@ void kinc_video_init(kinc_video_t *video, const char *filename) {
 
 	ctx->buf = NULL;
 	ctx->finished = false;
-	ctx->paused = true;
+	// ctx->paused = true;
+	ctx->state = GST_STATE_VOID_PENDING;
 	ctx->looping = false;
 
 	// ctx->audiosink = gst_element_factory_make("alsasink", "audiosink");
@@ -89,7 +90,8 @@ void kinc_video_init(kinc_video_t *video, const char *filename) {
 	// gst_element_link(ctx->audioconvert, ctx->audiosink);
 
 	ctx->bus = gst_element_get_bus(ctx->pipeline);
-	gst_element_set_state(ctx->pipeline, GST_STATE_PAUSED);
+	// gst_element_set_state(ctx->pipeline, GST_STATE_PAUSED);
+	// ctx->state = GST_STATE_PAUSED;
 
 	kinc_g4_texture_init(&ctx->texture, 16, 16, KINC_IMAGE_FORMAT_GREY8); // (DK) format doesn't actually matter as long as glGenTextures() is called?
 }
@@ -119,28 +121,32 @@ static bool change_state( kinc_video_t *video, GstState state ) {
 		return false;
 	}
 
+	video->impl.state = state;
 	return true;
 }
 
 void kinc_video_play(kinc_video_t *video, bool loop) {
-	if (change_state(video, GST_STATE_PLAYING)) {
-		video->impl.paused = false;
-		video->impl.looping = loop;
-	}
+	video->impl.looping = loop;
+	change_state(video, GST_STATE_PLAYING);
 }
 
 void kinc_video_pause(kinc_video_t *video) {
-	if (change_state(video, GST_STATE_PAUSED)) {
-		video->impl.paused = true;
-	}
+	change_state(video, GST_STATE_PAUSED);
 }
 
 void kinc_video_stop(kinc_video_t *video) {
-	gst_element_seek_simple(video->impl.pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 0);
-
-	if (change_state(video, GST_STATE_NULL)) {
-		video->impl.finished = true;
+	switch (video->impl.state) {
+		case GST_STATE_PLAYING:
+		case GST_STATE_PAUSED:
+			if (!gst_element_seek_simple(video->impl.pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 0)) {
+				kinc_log(KINC_LOG_LEVEL_WARNING, "failed to seek to beginning");
+			}
+			break;
 	}
+
+	change_state(video, GST_STATE_NULL);
+	video->impl.finished = true;
+	video->impl.buf = NULL;
 }
 
 int kinc_video_width(kinc_video_t *video) {
@@ -174,7 +180,7 @@ bool kinc_video_finished(kinc_video_t *video) {
 }
 
 bool kinc_video_paused(kinc_video_t *video) {
-	return video->impl.paused;
+	return video->impl.state == GST_STATE_PAUSED;
 }
 
 void kinc_video_update(kinc_video_t *video, double time) {
@@ -237,8 +243,11 @@ on_new_pad_handler( GstElement *element, GstPad *pad, kinc_video_impl_t *ctx ) {
 	// 	sinkpad = gst_element_get_static_pad(ctx->audioqueue, "sink");
 	// }
 
-	if (sinkpad) {
+	if (caps) {
 		gst_caps_unref(caps);
+	}
+
+	if (sinkpad) {
 		gst_pad_link(pad, sinkpad);
 		gst_object_unref(sinkpad);
 	}
