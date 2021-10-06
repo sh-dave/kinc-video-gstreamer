@@ -136,6 +136,8 @@ void kinc_video_pause(kinc_video_t *video) {
 }
 
 void kinc_video_stop(kinc_video_t *video) {
+	gst_element_seek_simple(video->impl.pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT, 0);
+
 	if (change_state(video, GST_STATE_NULL)) {
 		video->impl.finished = true;
 	}
@@ -266,6 +268,8 @@ on_gst_buffer( GstElement *element, GstBuffer *buf, GstPad *pad, kinc_video_impl
 
 			ctx->color_format = impl_discover_color_format(buf, caps);
 			ctx->video_info_valid = true;
+
+			gst_caps_unref(caps);
 		} else {
 			kinc_log(KINC_LOG_LEVEL_ERROR, "on_gst_buffer() - could not get caps for pad");
 		}
@@ -283,12 +287,9 @@ on_new_frame( kinc_video_impl_t *ctx, void *buf ) {
 		case VIDEO_COLOR_FORMAT_I420:
 		case VIDEO_COLOR_FORMAT_NV12:
 			if (gst_buffer_map(buf, &info, GST_MAP_READ)) {
-				int target = GL_TEXTURE_2D;
-				kinc_ticks_t start = kinc_timestamp();
-
-				glBindTexture(target, ctx->texture.impl.texture);
+				glBindTexture(GL_TEXTURE_2D, ctx->texture.impl.texture);
 				glCheckErrors();
-				glTexImage2D(target, 0, GL_R8, ctx->stride, ctx->height * 1.5, 0, GL_RED, GL_UNSIGNED_BYTE, info.data);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, ctx->stride, ctx->height * 1.5, 0, GL_RED, GL_UNSIGNED_BYTE, info.data);
 				glCheckErrors();
 				gst_buffer_unmap(buf, &info);
 				loaded = true;
@@ -330,7 +331,7 @@ message_handler( GstBus *bus, GstMessage *msg, kinc_video_impl_t *ctx ) {
 			} else {
 				ctx->finished = true;
 			}
-			// kinc_video_stop(ctx); // TODO (DK)
+
 			kinc_log(KINC_LOG_LEVEL_INFO, "video fininshed: GST_MESSAGE_EOS");
 			break;
 
@@ -341,7 +342,8 @@ message_handler( GstBus *bus, GstMessage *msg, kinc_video_impl_t *ctx ) {
 			break;
 
 		default:
-			kinc_log(KINC_LOG_LEVEL_INFO, "ignoring bus message %i", GST_MESSAGE_TYPE(msg));
+			// kinc_log(KINC_LOG_LEVEL_INFO, "ignoring bus message %i", GST_MESSAGE_TYPE(msg));
+			break;
 	}
 }
 
